@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Solver</title>
+    <style>
+        body {
+            background-image: url("game.jpeg");
+            background-attachment: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f7f7f7;
+            margin: 0;
+        }
+        h1 {
+            color: aquamarine;
+        }
+        .container {
+            text-align: center;
+            background: rgb(13, 146, 71);
+            padding: 20px;
+            box-shadow: 5px 5px 5px greenyellow;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        td {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0;
+        }
+        input {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            font-size: 18px;
+            border: none;
+            outline: none;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: aquamarine;
+            color: green;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Sudoku Solver</h1>
+        <table id="sudoku-grid"></table>
+        <button id="generate-button">Generate Puzzle</button>
+        <button id="solve-button">Solve</button>
+        <button id="check-result-button">Check Result</button>
+        <button id="clear-button">Clear</button>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const SIZE = 9;
+            const SUBGRIDSIZE = 3;
+            const table = document.getElementById('sudoku-grid');
+            const solveButton = document.getElementById('solve-button');
+            const clearButton = document.getElementById('clear-button');
+            const generateButton = document.getElementById('generate-button');
+            const checkResultButton = document.getElementById('check-result-button');
+            const messageDiv = document.getElementById('message');
+            let solutionBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill(0)); // To store the solution
+
+            // Create the grid
+            for (let i = 0; i < SIZE; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.maxLength = 1;
+                    input.setAttribute('data-row', i);
+                    input.setAttribute('data-col', j);
+                    input.addEventListener('input', function() {
+                        if (this.value !== '' && !/^[1-9]$/.test(this.value)) {
+                            this.value = '';
+                        }
+                    });
+                    cell.appendChild(input);
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            }
+
+            // Function to get the board from the grid
+            function getBoard() {
+                const board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+                const inputs = table.querySelectorAll('input');
+                inputs.forEach(input => {
+                    const row = input.getAttribute('data-row');
+                    const col = input.getAttribute('data-col');
+                    const value = parseInt(input.value) || 0;
+                    board[row][col] = value;
+                });
+                return board;
+            }
+
+            // Function to set the board to the grid
+            function setBoard(board) {
+                const inputs = table.querySelectorAll('input');
+                inputs.forEach(input => {
+                    const row = input.getAttribute('data-row');
+                    const col = input.getAttribute('data-col');
+                    input.value = board[row][col] === 0 ? '' : board[row][col];
+                });
+            }
+
+            // Function to clear the grid
+            function clearBoard() {
+                const inputs = table.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.value = '';
+                });
+                messageDiv.textContent = '';
+            }
+
+            // Function to solve the board
+            function solve(board, timeout = 1000) {
+                const start = Date.now();
+                function solveRecursive(board) {
+                    if (Date.now() - start > timeout) {
+                        return false; // Timeout
+                    }
+                    for (let row = 0; row < SIZE; row++) {
+                        for (let col = 0; col < SIZE; col++) {
+                            if (board[row][col] === 0) { // Empty cell
+                                for (let num = 1; num <= SIZE; num++) {
+                                    if (isSafe(board, row, col, num)) {
+                                        board[row][col] = num;
+
+                                        if (solveRecursive(board)) {
+                                            return true;
+                                        }
+
+                                        // Undo the current cell assignment (backtrack)
+                                        board[row][col] = 0;
+                                    }
+                                }
+                                return false; // No valid number found, need to backtrack
+                            }
+                        }
+                    }
+                    return true; // All cells are filled correctly
+                }
+                return solveRecursive(board);
+            }
+
+            function isSafe(board, row, col, num) {
+                return !isInRow(board, row, num) && 
+                    !isInCol(board, col, num) && 
+                    !isInBox(board, row - row % SUBGRIDSIZE, col - col % SUBGRIDSIZE, num);
+            }
+
+            function isInRow(board, row, num) {
+                for (let col = 0; col < SIZE; col++) {
+                    if (board[row][col] === num) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function isInCol(board, col, num) {
+                for (let row = 0; row < SIZE; row++) {
+                    if (board[row][col] === num) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function isInBox(board, startRow, startCol, num) {
+                for (let row = 0; row < SUBGRIDSIZE; row++) {
+                    for (let col = 0; col < SUBGRIDSIZE; col++) {
+                        if (board[startRow + row][startCol + col] === num) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // Function to generate a Sudoku puzzle
+            function generatePuzzle() {
+                const board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+                solve(board); // Fill the board with a complete valid solution
+
+                // Store the solution for later checking
+                solutionBoard = board.map(row => row.slice());
+
+                // Remove some numbers to create a puzzle
+                let cellsToRemove = 40; // Adjust this number to control difficulty
+                while (cellsToRemove > 0) {
+                    const row = Math.floor(Math.random() * SIZE);
+                    const col = Math.floor(Math.random() * SIZE);
+                    if (board[row][col] !== 0) {
+                        board[row][col] = 0;
+                        cellsToRemove--;
+                    }
+                }
+                setBoard(board);
+                messageDiv.textContent = 'Puzzle generated. Start solving!';
+                messageDiv.style.color = 'black';
+            }
+
+            // Function to check the user's solution
+            function checkResult() {
+                const userBoard = getBoard();
+                if (JSON.stringify(userBoard) === JSON.stringify(solutionBoard)) {
+                    messageDiv.textContent = 'Congratulations! You solved the puzzle!';
+                    messageDiv.style.color = 'aqua';
+                } else {
+                    messageDiv.textContent = 'Incorrect solution. Try again!';
+                    messageDiv.style.color = 'pink';
+                }
+            }
+
+            // Event listeners
+            generateButton.addEventListener('click', generatePuzzle);
+            checkResultButton.addEventListener('click', checkResult);
+            solveButton.addEventListener('click', () => {
+                const board = getBoard();
+                if (solve(board)) {
+                    setBoard(board);
+                    messageDiv.textContent = 'Sudoku solved!';
+                    messageDiv.style.color = 'white';
+                } else {
+                    messageDiv.textContent = 'Unsolvable puzzle';
+                    messageDiv.style.color = '#dc3545';
+                }
+            });
+            clearButton.addEventListener('click', clearBoard);
+        });
+    </script>
+</body>
+</html>
